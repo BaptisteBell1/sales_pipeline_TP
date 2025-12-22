@@ -32,7 +32,7 @@ jobs:
           echo "Waiting for job to finish..."
 
           while true; do
-            run=$(databricks jobs list-runs --job-id 469412575131163 --limit 1 --output JSON)
+            run=$(databricks runs list --job-id 469412575131163 --limit 1 --output JSON)
             state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
             result=$(echo "$run" | jq -r '.runs[0].state.result_state')
 
