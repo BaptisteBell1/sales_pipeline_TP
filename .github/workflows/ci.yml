@@ -7,60 +7,46 @@ on:
     branches: [ main ]
 
 jobs:
-  run-databricks-tests:
+  databricks-tests:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout du repo
       - uses: actions/checkout@v3
 
-      # Installer Databricks CLI v3 et jq
       - name: Install Databricks CLI
-        run: |
-          pip uninstall databricks-cli -y
-          pip install databricks-cli==1.0.0 jq
+        run: pip install databricks-cli jq
 
-      # Vérifier la version de la CLI
-      - name: Databricks CLI version
-        run: databricks --version
-
-      # Déclencher le Job Databricks
       - name: Trigger Databricks Job
-        id: run_job
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "Triggering Databricks Job..."
-          # Lancer le Job et récupérer le run_id
-          run_id=$(databricks jobs run-now --job-id 469412575131163 --output JSON | jq -r '.run_id')
-          echo "run_id=$run_id" >> $GITHUB_OUTPUT
+          databricks jobs run-now --job-id 469412575131163
 
-      # Attendre la fin du Job et vérifier le résultat
       - name: Wait for Job completion
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          run_id=${{ steps.run_job.outputs.run_id }}
-          if [ -z "$run_id" ]; then
-            echo "Error: run_id is empty! Job was not triggered."
-            exit 1
-          fi
+          echo "Waiting for job to finish..."
 
-          echo "Waiting for Databricks Job run_id=$run_id..."
-          status=""
-          while [ "$status" != "SUCCESS" ] && [ "$status" != "FAILED" ] && [ "$status" != "CANCELED" ]; do
+          while true; do
+            run=$(databricks jobs list-runs --job-id 469412575131163 --limit 1 --output JSON)
+            state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
+            result=$(echo "$run" | jq -r '.runs[0].state.result_state')
+
+            echo "State: $state | Result: $result"
+
+            if [[ "$state" == "TERMINATED" ]]; then
+              if [[ "$result" == "SUCCESS" ]]; then
+                echo "✅ Databricks tests passed"
+                exit 0
+              else
+                echo "❌ Databricks tests failed"
+                exit 1
+              fi
+            fi
+
             sleep 10
-            status=$(databricks runs get --run-id $run_id --output JSON | jq -r '.state.life_cycle_state')
-            echo "Current job status: $status"
           done
-
-          # Récupérer le résultat final
-          result=$(databricks runs get --run-id $run_id --output JSON | jq -r '.state.result_state')
-          echo "Databricks Job finished with result: $result"
-
-          if [ "$result" != "SUCCESS" ]; then
-            echo "Databricks Job failed!"
-            exit 1
-          fi
