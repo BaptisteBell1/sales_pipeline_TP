@@ -1,0 +1,11 @@
+paths:
+  raw_data: /Volumes/workspace/raw_data/raw_data
+  archive: /Volumes/workspace/raw_data/archives
+
+schemas:
+  bronze: workspace.bronze
+  silver: workspace.silver
+
+tables:
+  silver: silver_table
+  catalogue: workspace.bronze.catalogue
