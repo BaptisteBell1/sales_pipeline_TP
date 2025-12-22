@@ -23,7 +23,7 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "Triggering Databricks Job..."
-          run_id=$(databricks jobs run-now --job-id <ID_DE_TON_JOB> --output JSON | jq -r '.run_id')
+          run_id=$(databricks jobs run-now --job-id 469412575131163 --output JSON | jq -r '.run_id')
           echo "run_json=$run_json" >> $GITHUB_OUTPUT
 
       # Récupérer le run_id et attendre la fin du Job
