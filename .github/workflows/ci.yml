@@ -4,7 +4,7 @@ name: CI/CD - Run Databricks Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ] 
 
 jobs:
   run-databricks-tests:
@@ -14,21 +14,39 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install Databricks CLI
-        run: pip install databricks-cli
-
-      - name: Configure Databricks CLI
-        run: |
-          databricks configure --token <<EOF
-          ${{ secrets.DATABRICKS_HOST }}
-          ${{ secrets.DATABRICKS_TOKEN }}
-          EOF
+        run: pip install databricks-cli jq
 
       - name: Trigger Databricks Job
         id: run_job
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          databricks jobs run-now --job-id 469412575131163
+          echo "Triggering Databricks Job..."
+          run_json=$(databricks jobs run-now --job-id 469412575131163 --json)
+          echo "run_json=$run_json" >> $GITHUB_OUTPUT
 
+      # Récupérer le run_id et attendre la fin du Job
       - name: Wait for Job completion
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          run_id=$(databricks jobs run-now --job-id 469412575131163 --json | jq -r '.run_id')
-          databricks runs get --run-id $run_id
+          run_id=$(echo "${{ steps.run_job.outputs.run_json }}" | jq -r '.run_id')
+          echo "Waiting for Databricks Job run_id=$run_id..."
+          
+          status=""
+          while [ "$status" != "SUCCESS" ] && [ "$status" != "FAILED" ] && [ "$status" != "CANCELED" ]; do
+            sleep 10
+            status=$(databricks runs get --run-id $run_id | jq -r '.state.life_cycle_state')
+            echo "Current job status: $status"
+          done
+
+          # Récupérer le résultat final
+          result=$(databricks runs get --run-id $run_id | jq -r '.state.result_state')
+          echo "Databricks Job finished with result: $result"
+
+          if [ "$result" != "SUCCESS" ]; then
+            echo "Databricks Job failed!"
+            exit 1
+          fi
