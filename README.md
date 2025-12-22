@@ -1,6 +1,8 @@
 # 🎯 TP2 --- Industrialisation du traitement Spark : projet Python packagé
 
 ------------------------------------------------------------------------
+[![CI/CD - Run Databricks Tests](https://github.com/BaptisteBell1/sales_pipeline_TP/actions/workflows/ci.yml/badge.svg)](https://github.com/BaptisteBell1/sales_pipeline_TP/actions/workflows/ci.yml)
+
 
 ## 🧱 Objectif du TP2
 
