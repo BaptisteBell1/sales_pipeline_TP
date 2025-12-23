@@ -13,38 +13,28 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Databricks CLI v3
-        run: |
-          pip uninstall -y databricks-cli
-          pip install --upgrade databricks-cli==1.17.8  # version qui supporte `runs submit`
+      - name: Install Databricks CLI
+        run: pip install databricks-cli jq
 
-
-      - name: Trigger Run_Tests_Notebook task
+      - name: Trigger Databricks Job
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          echo "Triggering only Run_Tests_Notebook task..."
-          run_json=$(databricks jobs runs submit \
-            --job-id 469412575131163 \
-            --tasks '[{"task_key":"Run_Tests_Notebook"}]' \
-            --output JSON)
-
-          run_id=$(echo "$run_json" | jq -r '.run_id')
-          echo "Run ID: $run_id"
-          echo "$run_id" > run_id.txt
+          echo "Triggering Databricks Job..."
+          databricks jobs run-now --job-id 469412575131163 --tasks Run_Tests_Notebook
 
       - name: Wait for Job completion
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          run_id=$(cat run_id.txt)
           echo "Waiting for job to finish..."
+
           while true; do
-            run=$(databricks runs get --run-id $run_id --output JSON)
-            state=$(echo "$run" | jq -r '.state.life_cycle_state')
-            result=$(echo "$run" | jq -r '.state.result_state')
+            run=$(databricks runs list --job-id 469412575131163 --task-key Run_Tests_Notebook --limit 1 --output JSON)
+            state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
+            result=$(echo "$run" | jq -r '.runs[0].state.result_state')
 
             echo "State: $state | Result: $result"
 
