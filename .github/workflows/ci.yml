@@ -1,11 +1,5 @@
 #job_id = 469412575131163
 
-name: CI/CD - Run Databricks Tests
-
-on:
-  push:
-    branches: [ main ]
-
 jobs:
   databricks-tests:
     runs-on: ubuntu-latest
@@ -16,37 +10,60 @@ jobs:
       - name: Install Databricks CLI
         run: pip install databricks-cli jq
 
-      - name: Trigger Databricks Job
+      - name: Run Test Notebook Isolated
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          # Chemin EXACT de ton notebook de test dans le workspace Databricks
+          NOTEBOOK_PATH: "/Workspace/Users/bbellamy@aubay.com/sales_pipeline_TP/tests/run_test"
         run: |
-          echo "Triggering Databricks Job..."
-          databricks jobs run-now --job-id 469412575131163 --tasks Run_Tests_Notebook
+          echo "Generating ephemeral run configuration..."
 
-      - name: Wait for Job completion
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: |
-          echo "Waiting for job to finish..."
+          # 1. On crée le fichier JSON de config.
+          # Note: "new_cluster" permet de créer un cluster temporaire optimisé (Job Cluster)
+          cat > test_config.json <<EOF
+          {
+            "run_name": "CI_Tests_${GITHUB_SHA::7}",
+            "new_cluster": {
+              "spark_version": "13.3.x-scala2.12",
+              "node_type_id": "Standard_DS3_v2",
+              "num_workers": 1
+            },
+            "notebook_task": {
+              "notebook_path": "$NOTEBOOK_PATH"
+            }
+          }
+          EOF
 
+          echo "Submitting isolated run (skips Main task)..."
+          
+          # 2. On soumet le run. Databricks crée un run ID unique pour ce test.
+          json_output=$(databricks runs submit --json-file test_config.json)
+          run_id=$(echo "$json_output" | jq -r '.run_id')
+          
+          echo "✅ Run submitted! Run ID: $run_id"
+
+          # 3. Boucle de surveillance (Wait Loop)
           while true; do
-            run=$(databricks runs list --job-id 469412575131163 --task-key Run_Tests_Notebook --limit 1 --output JSON)
-            state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
-            result=$(echo "$run" | jq -r '.runs[0].state.result_state')
+            run_status=$(databricks runs get --run-id "$run_id")
+            
+            life_cycle_state=$(echo "$run_status" | jq -r '.state.life_cycle_state')
+            result_state=$(echo "$run_status" | jq -r '.state.result_state')
 
-            echo "State: $state | Result: $result"
+            echo "Run $run_id - Status: $life_cycle_state"
 
-            if [[ "$state" == "TERMINATED" ]]; then
-              if [[ "$result" == "SUCCESS" ]]; then
-                echo "✅ Databricks tests passed"
+            if [[ "$life_cycle_state" == "TERMINATED" || "$life_cycle_state" == "SKIPPED" || "$life_cycle_state" == "INTERNAL_ERROR" ]]; then
+              if [[ "$result_state" == "SUCCESS" ]]; then
+                echo "✅ Tests Passed!"
                 exit 0
               else
-                echo "❌ Databricks tests failed"
+                echo "❌ Tests Failed!"
+                url=$(echo "$run_status" | jq -r '.run_page_url')
+                echo "Logs: $url"
                 exit 1
               fi
             fi
 
-            sleep 10
+            echo "Waiting 15 seconds..."
+            sleep 15
           done
