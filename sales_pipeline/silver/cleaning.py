@@ -28,7 +28,6 @@ def clean_data(spark: SparkSession,
 
     dfs = []
     df_catalogue = spark.table(f"{bronze_schema}.{catalogue_table}")
-    print("Processing Data Cleaning...")
     for city in cities:
         df = spark.table(f"{bronze_schema}.{city}")
         

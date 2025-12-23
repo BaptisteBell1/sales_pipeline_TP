@@ -22,7 +22,7 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           echo "Triggering Databricks Job..."
-          databricks jobs run-now --job-id 469412575131163
+          databricks jobs run-now --job-id 469412575131163 --tasks Run_Tests_Notebook
 
       - name: Wait for Job completion
         env:
@@ -32,7 +32,7 @@ jobs:
           echo "Waiting for job to finish..."
 
           while true; do
-            run=$(databricks runs list --job-id 469412575131163 --limit 1 --output JSON)
+            run=$(databricks runs list --job-id 469412575131163 --task-key Run_Tests_Notebook --limit 1 --output JSON)
             state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
             result=$(echo "$run" | jq -r '.runs[0].state.result_state')
 
