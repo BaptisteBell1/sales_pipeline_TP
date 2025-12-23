@@ -16,25 +16,32 @@ jobs:
       - name: Install Databricks CLI
         run: pip install databricks-cli jq
 
-      - name: Run Test Notebook Isolated
+      - name: Run Test Notebook Isolated (AWS)
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-          # Chemin EXACT de ton notebook de test dans le workspace Databricks
           NOTEBOOK_PATH: "/Shared/Tests/Run_Tests_Notebook"
         run: |
-          echo "Generating ephemeral run configuration..."
+          echo "Generating ephemeral run configuration for AWS..."
 
-          # 1. On crée le fichier JSON de config.
-          # Note: "new_cluster" permet de créer un cluster temporaire optimisé (Job Cluster)
+          # CONFIGURATION AWS :
+          # node_type_id: "i3.xlarge" est le standard robuste sur AWS.
+          # num_workers: 0 force le mode "Single Node" (pas de workers, juste le driver).
           
           cat > test_config.json <<EOF
           {
             "run_name": "CI_Tests_${GITHUB_SHA::7}",
             "new_cluster": {
               "spark_version": "13.3.x-scala2.12",
-              "node_type_id": "Standard_DS3_v2",
-              "num_workers": 1
+              "node_type_id": "i3.xlarge",
+              "num_workers": 0,
+              "spark_conf": {
+                "spark.master": "local[*]",
+                "spark.databricks.cluster.profile": "singleNode"
+              },
+              "custom_tags": {
+                "ResourceClass": "SingleNode"
+              }
             },
             "notebook_task": {
               "notebook_path": "$NOTEBOOK_PATH"
@@ -42,15 +49,19 @@ jobs:
           }
           EOF
 
-          echo "Submitting isolated run (skips Main task)..."
-          
-          # 2. On soumet le run. Databricks crée un run ID unique pour ce test.
-          json_output=$(databricks runs submit --json-file test_config.json)
+          echo "Submitting isolated run..."
+
+          # On capture l'erreur et on l'affiche si ça plante
+          if ! json_output=$(databricks runs submit --json-file test_config.json 2>&1); then
+            echo "❌ CRITICAL ERROR during submission:"
+            echo "$json_output"
+            exit 1
+          fi
+
           run_id=$(echo "$json_output" | jq -r '.run_id')
-          
           echo "✅ Run submitted! Run ID: $run_id"
 
-          # 3. Boucle de surveillance (Wait Loop)
+          # Boucle de surveillance
           while true; do
             run_status=$(databricks runs get --run-id "$run_id")
             
@@ -70,7 +81,5 @@ jobs:
                 exit 1
               fi
             fi
-
-            echo "Waiting 15 seconds..."
             sleep 15
           done
