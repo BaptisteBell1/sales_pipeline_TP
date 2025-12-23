@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Databricks CLI
+      - name: Install Databricks CLI v3
         run: |
-          pip install --upgrade databricks-cli jq
+          pip uninstall -y databricks-cli
+          pip install --upgrade databricks-cli==1.17.8  # version qui supporte `runs submit`
+
 
       - name: Trigger Run_Tests_Notebook task
         env:
