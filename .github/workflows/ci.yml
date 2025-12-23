@@ -1,5 +1,11 @@
 #job_id = 469412575131163
 
+name: CI/CD - Run Databricks Tests
+
+on:
+  push:
+    branches: [ main ]
+
 jobs:
   databricks-tests:
     runs-on: ubuntu-latest
@@ -15,12 +21,13 @@ jobs:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           # Chemin EXACT de ton notebook de test dans le workspace Databricks
-          NOTEBOOK_PATH: "/Workspace/Users/bbellamy@aubay.com/sales_pipeline_TP/tests/run_test"
+          NOTEBOOK_PATH: "/Shared/Tests/Run_Tests_Notebook"
         run: |
           echo "Generating ephemeral run configuration..."
 
           # 1. On crée le fichier JSON de config.
           # Note: "new_cluster" permet de créer un cluster temporaire optimisé (Job Cluster)
+          
           cat > test_config.json <<EOF
           {
             "run_name": "CI_Tests_${GITHUB_SHA::7}",
