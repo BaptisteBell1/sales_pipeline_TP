@@ -1,4 +1,4 @@
-#job_id = 469412575131163
+#job_id = 3189259000647
 
 name: CI/CD - Run Databricks Tests
 
@@ -16,64 +16,37 @@ jobs:
       - name: Install Databricks CLI
         run: pip install databricks-cli jq
 
-      - name: Run Test Notebook Isolated (AWS)
+      - name: Trigger Databricks Job
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-          NOTEBOOK_PATH: "/Shared/Tests/Run_Tests_Notebook"
         run: |
-          echo "Generating ephemeral run configuration for AWS..."
+          echo "Triggering Databricks Job..."
+          databricks jobs run-now --job-id 3189259000647
 
-          # CONFIGURATION AWS :
-          # node_type_id: "i3.xlarge" est le standard robuste sur AWS.
-          # num_workers: 0 force le mode "Single Node" (pas de workers, juste le driver).
-          
-          cat > test_config.json <<EOF
-          {
-            "run_name": "CI_Tests_${GITHUB_SHA::7}",
-            "new_cluster": {
-              "spark_version": "13.3.x-scala2.12",
-              "custom_tags": {
-                "ResourceClass": "SingleNode"
-              }
-            },
-            "notebook_task": {
-              "notebook_path": "/Workspace/Users/bbellamy@aubay.com/sales_pipeline_TP/tests/run_test"
-            }
-          }
-          EOF
+      - name: Wait for Job completion
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          echo "Waiting for job to finish..."
 
-          echo "Submitting isolated run..."
-
-          # On capture l'erreur et on l'affiche si ça plante
-          if ! json_output=$(databricks runs submit --json-file test_config.json 2>&1); then
-            echo "❌ CRITICAL ERROR during submission:"
-            echo "$json_output"
-            exit 1
-          fi
-
-          run_id=$(echo "$json_output" | jq -r '.run_id')
-          echo "✅ Run submitted! Run ID: $run_id"
-
-          # Boucle de surveillance
           while true; do
-            run_status=$(databricks runs get --run-id "$run_id")
-            
-            life_cycle_state=$(echo "$run_status" | jq -r '.state.life_cycle_state')
-            result_state=$(echo "$run_status" | jq -r '.state.result_state')
+            run=$(databricks runs list --job-id 3189259000647 --limit 1 --output JSON)
+            state=$(echo "$run" | jq -r '.runs[0].state.life_cycle_state')
+            result=$(echo "$run" | jq -r '.runs[0].state.result_state')
 
-            echo "Run $run_id - Status: $life_cycle_state"
+            echo "State: $state | Result: $result"
 
-            if [[ "$life_cycle_state" == "TERMINATED" || "$life_cycle_state" == "SKIPPED" || "$life_cycle_state" == "INTERNAL_ERROR" ]]; then
-              if [[ "$result_state" == "SUCCESS" ]]; then
-                echo "✅ Tests Passed!"
+            if [[ "$state" == "TERMINATED" ]]; then
+              if [[ "$result" == "SUCCESS" ]]; then
+                echo "✅ Databricks tests passed"
                 exit 0
               else
-                echo "❌ Tests Failed!"
-                url=$(echo "$run_status" | jq -r '.run_page_url')
-                echo "Logs: $url"
+                echo "❌ Databricks tests failed"
                 exit 1
               fi
             fi
-            sleep 15
+
+            sleep 10
           done
