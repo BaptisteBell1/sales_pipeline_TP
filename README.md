@@ -13,7 +13,7 @@ Designed around a **Medallion Architecture** (Bronze -> Silver -> Gold), this pi
 
 The Gold layer structures the data to answer specific business questions:
 
-* **Global Performance**: Consolidated monthly and annual revenue (normalized to a single currency).
+* **Global Performance**: Consolidated monthly revenue (normalized to a single currency).
 * **Store Performance**: Comparative analysis of revenue across different boutiques.
 * **Best Sellers (Volume)**: Identification of most popular products by units sold.
 * **Best Sellers (Value)**: Identification of highest-grossing products.
