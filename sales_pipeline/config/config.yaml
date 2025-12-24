@@ -5,7 +5,13 @@ paths:
 schemas:
   bronze: workspace.bronze
   silver: workspace.silver
+  gold: workspace.gold
 
 tables:
-  silver: silver_table
-  catalogue: workspace.bronze.catalogue
+  bronze: bronze.bronze_table
+  catalogue: bronze.catalogue
+  silver: silver.silver_table
+  gold_ca : gold.revenue_per_month
+  gold_ca_boutique: gold.revenue_per_month_and_shop
+  gold_top: gold.top_selling_products 
+  gold_top_revenue: gold.top_selling_products_by_revenue
