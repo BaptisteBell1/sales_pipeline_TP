@@ -20,7 +20,7 @@ The Gold layer structures the data to answer specific business questions:
 
 ------------------------------------------------------------------------
 
-## 1. 🗂️ Project structure
+## 🗂️ Project structure
 
     sales_pipeline_TP/
     │
