@@ -79,8 +79,10 @@ To ensure the reliability of the code in the production environment, this projec
 
 Instead of running tests on a standard runner, the pipeline triggers a remote execution on the Spark cluster.
 
-#### Workflow Logic
+### Workflow Logic
 Triggered automatically on every push to `main`, the workflow performs the following steps:
+
+#### 🧪 Continuous Integration (CI) : Databricks Validation
 
 1.  **Setup**: Installs the `databricks-cli` and authenticates using secure secrets (`DATABRICKS_HOST`, `DATABRICKS_TOKEN`).
 2.  **Remote Trigger**: Initiates the specific Databricks Job (using `Job ID`) responsible for running the test suite.
@@ -88,3 +90,11 @@ Triggered automatically on every push to `main`, the workflow performs the follo
 4.  **Validation**:
     - ✅ **Pass**: If the remote job returns a `SUCCESS` state.
     - ❌ **Fail**: If the remote job fails, breaking the CI pipeline to prevent bad code deployment.
+
+#### 📦 Continuous Deployment (CD): PyPI Release
+Once the Databricks tests pass successfully (`SUCCESS` state), the pipeline automatically triggers the Deployment Job:
+
+5. **Build**: The project is packaged into a standard distributable format (Wheel `.whl` and Source `.tar.gz`) using the Python build backend.
+6. **Publish**: The artifacts are securely uploaded to PyPI (Python Package Index).
+
+The workflow uses strict dependency logic (`needs: databricks-tests`), ensuring that broken code is never published.
