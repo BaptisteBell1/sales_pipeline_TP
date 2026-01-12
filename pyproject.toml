@@ -6,11 +6,16 @@ build-backend = "hatchling.build"
 name = "spark-project-databricks"
 version = "1.0.0"
 description = "Sales pipeline processing for Databricks"
+
+readme = "README.md"
+license = { text = "LICENCE AUBAY" }
 requires-python = ">=3.10"
 authors = [
   { name="Baptiste", email="bbellamy@aubay.com" }
 ]
 dynamic = ["dependencies"]
+
+depencencies = [pytest]
 
 [project.scripts]
 run-pipeline = "main:run_pipeline"
