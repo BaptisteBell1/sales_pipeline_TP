@@ -4,6 +4,7 @@
 [![CI/CD - Run Databricks Tests](https://github.com/BaptisteBell1/sales_pipeline_TP/actions/workflows/ci.yml/badge.svg)](https://github.com/BaptisteBell1/sales_pipeline_TP/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![Databricks](https://img.shields.io/badge/Databricks-FF3621.svg?logo=databricks&logoColor=white)
+[![PyPI Storage](https://img.shields.io/badge/Hosted_on-PyPI-blue?logo=pypi&logoColor=white)](https://pypi.org/project/spark-project-databricks/)
 
 ## 🧱 Project Overview
 
