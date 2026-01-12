@@ -15,8 +15,6 @@ authors = [
 ]
 dynamic = ["dependencies"]
 
-depencencies = [pytest]
-
 [project.scripts]
 run-pipeline = "main:run_pipeline"
 
